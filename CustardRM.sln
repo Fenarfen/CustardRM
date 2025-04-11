@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustardRM", "CustardRM.csproj", "{3137C62B-2965-4B04-ABCC-EC60D34D3DAB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3137C62B-2965-4B04-ABCC-EC60D34D3DAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3137C62B-2965-4B04-ABCC-EC60D34D3DAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3137C62B-2965-4B04-ABCC-EC60D34D3DAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3137C62B-2965-4B04-ABCC-EC60D34D3DAB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3974AAAA-DCDB-4C72-8B15-D7ECA9729079}
+	EndGlobalSection
+EndGlobal
