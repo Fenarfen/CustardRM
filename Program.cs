@@ -1,25 +1,77 @@
+using CustardRM.Interfaces;
+using CustardRM.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Http;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
+using CustardRM.Components;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddRazorPages();
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddHttpClient<HttpClientService>((sp, client) =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var baseUriStr = config.GetValue<string>("BaseURI")
+        ?? throw new Exception("Cannot find BaseURI in appsettings.json");
+    if (!Uri.TryCreate(baseUriStr, UriKind.Absolute, out var baseUri))
+    {
+        throw new Exception("The provided BaseURI must be an absolute URI.");
+    }
+
+    client.BaseAddress = baseUri;
+});
+
+builder.Services.AddScoped<IDatabaseService, DatabaseService>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ICookieService, CookieService>();
+builder.Services.AddScoped<IHttpClientService, HttpClientService>();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("fixed", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: key => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromSeconds(10),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = 429;
+        await context.HttpContext.Response.WriteAsync("Rate limit exceeded.", token);
+    };
+});
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
+app.UseRateLimiter();
 
-app.UseHttpsRedirection();
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.UseStaticFiles();
-
 app.UseRouting();
 
-app.UseAuthorization();
+app.MapControllers();
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
-app.MapRazorPages();
+app.UseHttpsRedirection();
+
+app.UseAntiforgery();
 
 app.Run();

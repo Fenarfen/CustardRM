@@ -1,0 +1,442 @@
+﻿@page "/inventory"
+@using CustardRM.Models.Entities;
+@using CustardRM.Services;
+@using System.Net.Http.Headers;
+@using CustardRM.Models.DTOs;
+@inject HttpClientService HttpService
+@inject IJSRuntime JSRuntime
+
+<link href="css/pages/inventory.css" rel="stylesheet" />
+
+<div class="toolbar">
+	<button @onclick="CreateNew">Create New</button>
+	<button @onclick="Edit" disabled="@(!IsItemSelected)">Edit</button>
+	<button @onclick="View" disabled="@(!IsItemSelected)">View</button>
+
+	<input type="text" placeholder="Enter filter text" @bind="keywordFilterText" />
+	<button @onclick="ApplyKeywordFilter">Filter</button>
+
+	<button @onclick="ToggleAdvancedFilter">Advanced Filter</button>
+</div>
+
+@if (showAdvancedFilter)
+{
+	<div class="advanced-filter-box">
+		<h4>Advanced Filter</h4>
+		<div>
+			<label>
+				<input type="checkbox" @bind="stockItemFilter.ItemCodeFilter.Enabled" />
+				Enable Item Code Filter
+			</label>
+			<label>Item Code:</label>
+			<input type="text" @bind="stockItemFilter.ItemCodeFilter.Value" />
+		</div>
+		<div>
+			<label>
+				<input type="checkbox" @bind="stockItemFilter.ItemNameFilter.Enabled" />
+				Enable
+			</label>
+			<label>Item Name:</label>
+			<input type="text" @bind="stockItemFilter.ItemNameFilter.Value" />
+		</div>
+		<div>
+			<label>
+				<input type="checkbox" @bind="stockItemFilter.DescriptionFilter.Enabled" />
+				Enable
+			</label>
+			<label>Description:</label>
+			<input type="text" @bind="stockItemFilter.DescriptionFilter.Value" />
+		</div>
+		<div>
+			<label>
+				<input type="checkbox" @bind="stockItemFilter.UnitPriceFilter.Enabled" />
+				Enable
+			</label>
+			<label>Unit Price:</label>
+			<div>
+				<label>Min Value:</label>
+				<input type="number" @bind="stockItemFilter.UnitPriceFilter.LowerValue" />
+			</div>
+			<div>
+				<label>Max Value:</label>
+				<input type="number" @bind="stockItemFilter.UnitPriceFilter.UpperValue" />
+			</div>
+		</div>
+		<div>
+			<label>
+				<input type="checkbox" @bind="stockItemFilter.CostPriceFilter.Enabled" />
+				Enable
+			</label>
+			<label>Cost Price:</label>
+			<div>
+				<label>Min Value:</label>
+				<input type="number" @bind="stockItemFilter.CostPriceFilter.LowerValue" />
+			</div>
+			<div>
+				<label>Max Value:</label>
+				<input type="number" @bind="stockItemFilter.CostPriceFilter.UpperValue" />
+			</div>
+		</div>
+		<div>
+			<label>
+				<input type="checkbox" @bind="stockItemFilter.IsActiveFilter.Enabled" />
+				Enable
+			</label>
+			<label>
+				<label>Is Active:</label>
+				<input type="checkbox" @bind="stockItemFilter.IsActiveFilter.Value" />
+			</label>
+		</div>
+		<div>
+			<label>
+				<input type="checkbox" @bind="stockItemFilter.CreatedAtFilter.Enabled" />
+				Enable
+			</label>
+			<label>Created At:</label>
+			<div>
+				<label>Min Value:</label>
+				<input type="datetime" @bind="stockItemFilter.CreatedAtFilter.LowerValue" />
+			</div>
+			<div>
+				<label>Max Value:</label>
+				<input type="datetime" @bind="stockItemFilter.CreatedAtFilter.UpperValue" />
+			</div>
+		</div>
+		<div>
+			<label>
+				<input type="checkbox" @bind="stockItemFilter.UpdatedAtFilter.Enabled" />
+				Enable
+			</label>
+			<label>Updated At:</label>
+			<div>
+				<label>Min Value:</label>
+				<input type="datetime" @bind="stockItemFilter.UpdatedAtFilter.LowerValue" />
+			</div>
+
+			<div>
+				<label>Max Value:</label>
+				<input type="datetime" @bind="stockItemFilter.UpdatedAtFilter.UpperValue" />
+			</div>
+		</div>
+		@if (!string.IsNullOrEmpty(advancedFilterErrorMessage))
+		{
+			<div><p>@advancedFilterErrorMessage</p></div>
+		}
+		<div>
+			<button @onclick="RemoveAdvancedFilter">Cancel</button>
+			<button @onclick="CancelAdvancedFilter">Cancel</button>
+			<button @onclick="ApplyAdvancedFilter">Filter</button>
+		</div>
+	</div>
+}
+
+<table class="table table-striped" @onclick="CloseContextMenu">
+	<thead>
+		<tr>
+			<th>Code</th>
+			<th>Name</th>
+			<th>Description</th>
+			<th>UnitPrice</th>
+			<th>CostPrice</th>
+			<th>StockLevel</th>
+			<th>IsActive</th>
+			<th>CreatedAt</th>
+			<th>UpdatedAt</th>
+		</tr>
+	</thead>
+	<tbody>
+		@if (displayedItems == null)
+		{
+			<p>Loading...</p>
+		}
+		else if (!displayedItems.Any())
+		{
+			<p>No items found</p>
+		}
+		else
+		{
+			foreach (var item in displayedItems)
+			{
+				<tr @oncontextmenu="(args) => OnRowRightClick(args, item)"
+					@oncontextmenu:preventDefault="true"
+					@oncontextmenu:stopPropagation="true"
+					class="@(IsSelected(item) ? "selected-row" : "")">
+					<td>@item.ItemCode</td>
+					<td>@item.ItemName</td>
+					<td>@item.Description</td>
+					<td>@item.UnitPrice</td>
+					<td>@item.CostPrice</td>
+					<td>@item.StockLevel</td>
+					<td>@(item.IsActive ? "Yes" : "No")</td>
+					<td>@item.CreatedAt</td>
+					<td>@item.UpdatedAt</td>
+				</tr>
+			}
+		}
+	</tbody>
+</table>
+
+@if (showContextMenu)
+{
+	<div class="context-menu"
+		 style="left:@contextMenuPositionXpx; top:@contextMenuPositionYpx;"
+		 @onclick="CloseContextMenu">
+		<ul>
+			<li @onclick="Edit" class="@(IsItemSelected ? "" : "disabled")">Edit</li>
+			<li @onclick="View" class="@(IsItemSelected ? "" : "disabled")">View</li>
+			<li class="separator"></li>
+		</ul>
+	</div>
+}
+
+@code {
+    private List<Models.Entities.Inventory.StockItem> allItems = new();
+    private List<Models.Entities.Inventory.StockItem> displayedItems = new();
+
+	private Models.Entities.Inventory.StockItem? selectedItem;
+
+	//  Stock item filter values
+	// Keyword
+	private string keywordFilterText = string.Empty;
+	// Advanced filter
+	private bool showAdvancedFilter = false;
+	private CustardRM.Models.DTOs.Filter.StockItemFilter stockItemFilter = new();
+	private string advancedFilterErrorMessage = string.Empty;
+
+	// Context Menu values
+	private bool showContextMenu = false;
+	private int contextMenuPositionX;
+	private int contextMenuPositionY;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			var token = await JSRuntime.InvokeAsync<string>(
+				"localStorage.getItem",
+				new object[] { "authToken" }
+			);
+
+			if (!string.IsNullOrEmpty(token))
+			{
+				HttpService.Http.DefaultRequestHeaders.Authorization =
+					new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+			}
+
+			var jsonResponse = await HttpService.SendGet("/api/inventory/no-filter");
+			var jsonContent = await jsonResponse.Content.ReadAsStringAsync();
+
+			if (string.IsNullOrEmpty(jsonContent))
+			{
+				allItems = new();
+			}
+			else
+			{
+				allItems = System.Text.Json.JsonSerializer.Deserialize<List<CustardRM.Models.Entities.Inventory.StockItem>>(
+				jsonContent,
+				new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+			);
+			}
+
+			displayedItems = new List<CustardRM.Models.Entities.Inventory.StockItem>(allItems);
+
+			StateHasChanged();
+		}
+	}
+
+	private void ApplyKeywordFilter()
+	{
+		Console.WriteLine($"Simple Filter: {keywordFilterText}");
+
+		if (string.IsNullOrEmpty(keywordFilterText))
+		{
+			return;
+		}
+
+		displayedItems.Clear();
+
+		foreach (var item in allItems)
+		{
+			if (item.ItemCode.ToLower().Contains(keywordFilterText.ToLower()) || 
+				item.ItemName.ToLower().Contains(keywordFilterText.ToLower()))
+			{
+				displayedItems.Add(item);
+			}
+		}
+
+		StateHasChanged();
+	}
+
+	private void ToggleAdvancedFilter()
+	{
+		showAdvancedFilter = !showAdvancedFilter;
+	}
+
+	private void RemoveAdvancedFilter()
+	{
+		stockItemFilter = new();
+
+		showAdvancedFilter = false;
+		displayedItems = new List<Models.Entities.Inventory.StockItem>(allItems);
+		StateHasChanged();
+	}
+
+	private void CancelAdvancedFilter()
+	{
+		showAdvancedFilter = false;
+
+		StateHasChanged();
+	}
+
+	// Called when the Filter button in the advanced filter panel is clicked
+	private void ApplyAdvancedFilter()
+	{
+		if (stockItemFilter.GetEnabledCount() == 0)
+		{
+			advancedFilterErrorMessage = "At least one option must be enabled";
+			return;
+		}
+
+		Console.WriteLine("Advanced Filter applied:");
+		Console.WriteLine($"ItemCodeFilter[enabled:{stockItemFilter.ItemCodeFilter.Enabled}]: {stockItemFilter.ItemCodeFilter.Value}");
+		Console.WriteLine($"ItemNameFilter[enabled:{stockItemFilter.ItemNameFilter.Enabled}]: {stockItemFilter.ItemNameFilter.Value}");
+		Console.WriteLine($"DescriptionFilter[enabled:{stockItemFilter.DescriptionFilter.Enabled}]: {stockItemFilter.DescriptionFilter.Value}");
+		Console.WriteLine($"UnitPriceFilter[enabled:{stockItemFilter.UnitPriceFilter.Enabled}]: min: {stockItemFilter.UnitPriceFilter.LowerValue} max: {stockItemFilter.UnitPriceFilter.LowerValue}");
+		Console.WriteLine($"CostPriceFilter[enabled:{stockItemFilter.CostPriceFilter.Enabled}]: min: {stockItemFilter.CostPriceFilter.LowerValue} max: {stockItemFilter.CostPriceFilter.LowerValue}");
+		Console.WriteLine($"IsActiveFilter[enabled:{stockItemFilter.IsActiveFilter.Enabled}]: {stockItemFilter.IsActiveFilter.Value}");
+		Console.WriteLine($"CreatedAtFilter[enabled:{stockItemFilter.CreatedAtFilter.Enabled}]: min: {stockItemFilter.CreatedAtFilter.LowerValue} max: {stockItemFilter.CreatedAtFilter.LowerValue}");
+		Console.WriteLine($"UpdatedAtFilter[enabled:{stockItemFilter.UpdatedAtFilter.Enabled}]: min: {stockItemFilter.UpdatedAtFilter.LowerValue} max: {stockItemFilter.UpdatedAtFilter.LowerValue}");
+
+		displayedItems = new();
+
+		var query = allItems.AsEnumerable();
+
+		if (stockItemFilter.ItemCodeFilter.Enabled &&
+			!string.IsNullOrEmpty(stockItemFilter.ItemCodeFilter.Value))
+		{
+			query = query.Where(item =>
+				item.ItemCode?.ToLower().Contains(stockItemFilter.ItemCodeFilter.Value.ToLower()) == true);
+		}
+
+		if (stockItemFilter.ItemNameFilter.Enabled &&
+			!string.IsNullOrEmpty(stockItemFilter.ItemNameFilter.Value))
+		{
+			query = query.Where(item =>
+				item.ItemName?.ToLower().Contains(stockItemFilter.ItemNameFilter.Value.ToLower()) == true);
+		}
+
+		if (stockItemFilter.DescriptionFilter.Enabled &&
+			!string.IsNullOrEmpty(stockItemFilter.DescriptionFilter.Value))
+		{
+			query = query.Where(item =>
+				item.Description?.ToLower().Contains(stockItemFilter.DescriptionFilter.Value.ToLower()) == true);
+		}
+
+		if (stockItemFilter.UnitPriceFilter.Enabled)
+		{
+			if (stockItemFilter.UnitPriceFilter.LowerValue != null)
+			{
+				query = query.Where(item => item.UnitPrice >= stockItemFilter.UnitPriceFilter.LowerValue);
+			}
+
+			if (stockItemFilter.UnitPriceFilter.UpperValue != null)
+			{
+				query = query.Where(item => item.UnitPrice <= stockItemFilter.UnitPriceFilter.UpperValue);
+			}
+		}
+
+		if (stockItemFilter.CostPriceFilter.Enabled)
+		{
+			if (stockItemFilter.CostPriceFilter.LowerValue != null)
+			{
+				query = query.Where(item => item.CostPrice >= stockItemFilter.CostPriceFilter.LowerValue);
+			}
+
+			if (stockItemFilter.CostPriceFilter.UpperValue != null)
+			{
+				query = query.Where(item => item.CostPrice <= stockItemFilter.CostPriceFilter.UpperValue);
+			}
+		}
+
+		if (stockItemFilter.IsActiveFilter.Enabled)
+		{
+			query = query.Where(item =>
+				item.IsActive == stockItemFilter.IsActiveFilter.Value);
+		}
+
+		if (stockItemFilter.CreatedAtFilter.Enabled)
+		{
+			if (stockItemFilter.CreatedAtFilter.LowerValue != null)
+			{
+				query = query.Where(item => item.CreatedAt >= stockItemFilter.CreatedAtFilter.LowerValue);
+			}
+
+			if (stockItemFilter.CreatedAtFilter.UpperValue != null)
+			{
+				query = query.Where(item => item.CreatedAt <= stockItemFilter.CreatedAtFilter.UpperValue);
+			}
+		}
+
+		if (stockItemFilter.UpdatedAtFilter.Enabled)
+		{
+			if (stockItemFilter.UpdatedAtFilter.LowerValue != null)
+			{
+				query = query.Where(item => item.UpdatedAt >= stockItemFilter.UpdatedAtFilter.LowerValue);
+			}
+
+			if (stockItemFilter.UpdatedAtFilter.UpperValue != null)
+			{
+				query = query.Where(item => item.UpdatedAt <= stockItemFilter.UpdatedAtFilter.UpperValue);
+			}
+		}
+
+		displayedItems = query.ToList();
+
+		showAdvancedFilter = false;
+
+		StateHasChanged();
+	}
+
+	private bool IsSelected(Models.Entities.Inventory.StockItem item) => selectedItem != null && selectedItem.ID == item.ID;
+
+	private bool IsItemSelected => selectedItem != null;
+
+	private void SelectItem(Models.Entities.Inventory.StockItem item)
+	{
+		selectedItem = item;
+	}
+
+	private void OnRowRightClick(MouseEventArgs e, Models.Entities.Inventory.StockItem item)
+	{
+		selectedItem = item;
+		showContextMenu = true;
+
+		contextMenuPositionX = (int)e.ClientX;
+		contextMenuPositionY = (int)e.ClientY;
+	}
+
+	private void CloseContextMenu()
+	{
+		showContextMenu = false;
+	}
+
+	private string contextMenuPositionXpx => $"{contextMenuPositionX}px";
+	private string contextMenuPositionYpx => $"{contextMenuPositionY}px";
+
+	private void CreateNew()
+	{
+		Console.WriteLine("Create new item");
+	}
+
+	private void Edit()
+	{
+		if (!IsItemSelected) return;
+		Console.WriteLine($"Edit item {selectedItem?.ItemCode}");
+	}
+
+	private void View()
+	{
+		if (!IsItemSelected) return;
+		Console.WriteLine($"View item {selectedItem?.ItemCode}");
+	}
+}
