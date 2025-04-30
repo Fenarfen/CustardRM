@@ -1,0 +1,83 @@
+﻿@page "/ai/reorder-prediction-testing"
+@using CustardRM.Interfaces
+@using CustardRM.Models.DTOs
+@using CustardRM.Models.DTOs.AI
+@inject IAIService AIService
+
+<link href="css/pages/AiFeatureTestPage.css" rel="stylesheet" />
+
+<h3>Test Reorder Quantity and Timing Model</h3>
+
+<p>NOTE: This page is intended to test the effectivness of the reorder quantity and timing models and would not be exposed to consumers</p>
+
+@if (!string.IsNullOrEmpty(resultQuantity))
+{
+    <div class="result-box">
+        <p><strong>Predicted Reorder Quantity:</strong> @resultQuantity</p>
+        <p><strong>Predicted Reorder Timing:</strong></p>
+        <p>Optimal Date number of days away: @resultDaysAway</p>
+        <p>Optimal Date: @resultDate</p>
+    </div>
+
+    <button class="btn btn-secondary ms-2" @onclick="ResetForm">Reset</button>
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="@PredictScore">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label>Average Daily Consumption (the daily average number of this stock item that is sold or lost to attrition)</label>
+            <InputNumber class="form-control" @bind-Value="model.AvgDailyConsumption" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Stock Level</label>
+            <InputNumber class="form-control" @bind-Value="model.StockLevel" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Average Lead Time (the average number of days it takes from order creation to recieving the product)</label>
+            <InputNumber class="form-control" @bind-Value="model.AvgLeadTime" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Lead Time Variance (the standard deviation of all orders from this supplier for this stock item. The follow example values depend on the lead time and assume an equal chance of arrival on every day within the range, but for the purposes of this feature, here are some example values to use - ±1 day = 0.82, ±2 days = 1.41, ±3 days = 2.00, ±4 days = 2.58)</label>
+            <InputNumber class="form-control" @bind-Value="model.LeadTimeVariance" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Days Since Last Ordered: </label>
+            <InputNumber class="form-control" @bind-Value="model.DaysSinceLastOrder" step="0.01" />
+        </div>
+
+        <button class="btn btn-primary" type="submit">Predict Reorder quantity and timing</button>
+        <button class="btn btn-secondary ms-2" @onclick="ResetForm">Reset</button>
+    </EditForm>
+}
+
+@code {
+    private SuggestedReorderModel model = new();
+
+    private string? resultQuantity;
+    private double resultDaysAway;
+    private string? resultDate;
+
+    private void ResetForm()
+    {
+        model = new();
+        resultQuantity = null;
+        resultDate = null;
+        resultDaysAway = -1;
+    }
+
+    private void PredictScore()
+    {
+        var predictionQuantity = CustardRM.SuggestedReorderQuantityModel.Predict(model);
+        var predictionTiming = CustardRM.SuggestedReorderTimingModel.Predict(model);
+        resultQuantity = $"{Math.Round(predictionQuantity.Score, 0)}";
+        resultDaysAway = Math.Round(predictionTiming.Score, 2);
+        resultDate = DateTime.UtcNow.AddDays(resultDaysAway).ToString("yyyy-MM-dd");
+    }
+}

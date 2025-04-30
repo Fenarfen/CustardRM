@@ -1,0 +1,127 @@
+﻿@page "/ai/review-sentiment-testing"
+@using CustardRM.Interfaces
+@using CustardRM.Models.DTOs.AI
+@using CustardRM.Models.Entities
+@using CustardRM.Models.Entities.Inventory
+@inject IAIService AIService
+
+<link href="css/pages/AiFeatureTestPage.css" rel="stylesheet" />
+
+<h1>Test Sentiment Analysis Model</h1>
+
+<p>NOTE: This page is intended to test the effectiveness of the review sentiment analysis model and would not be exposed to consumers.</p>
+
+@if (analysisInProgress)
+{
+    <p><em>Analysis in progress...</em></p>
+}
+else if (analysisComplete)
+{
+    <h4>Sentiment Result: <span class="@(Sentiment == "Positive" ? "positive" : "negative")">@Sentiment</span></h4>
+
+    <h5>Top Bigrams:</h5>
+    <p class="small text-muted">NOTE: Bigram feature does not use AI and is only intended to provide context into the sentiment result.</p>
+
+    @if (Bigrams?.Any() == true)
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Bigram</th>
+                    <th>Frequency</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var bigram in Bigrams.OrderByDescending(b => b.Value))
+                {
+                    <tr>
+                        <td>@bigram.Key</td>
+                        <td>@bigram.Value</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No bigrams found.</p>
+    }
+
+    <button class="btn btn-secondary mt-2" @onclick="ResetForm">Try Again</button>
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="AnalyseReviewText">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label for="reviewInput">Review:</label>
+            <InputTextArea id="reviewInput" class="form-control" @bind-Value="model.Review" disabled="@analysisInProgress" />
+        </div>
+
+        <button class="btn btn-primary mt-2" type="submit" disabled="@analysisInProgress">
+            @(analysisInProgress ? "Analysing..." : "Analyse")
+        </button>
+        <button class="btn btn-secondary ms-2 mt-2" @onclick="ResetForm" disabled="@analysisInProgress">Reset</button>
+    </EditForm>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-3">@errorMessage</div>
+}
+
+@code {
+    private ReviewSentimentAnalysisModel model = new();
+    private string Sentiment = string.Empty;
+    private Dictionary<string, int> Bigrams = new();
+    private bool analysisComplete = false;
+    private bool analysisInProgress = false;
+    private string errorMessage = string.Empty;
+
+    private async Task AnalyseReviewText()
+    {
+        try
+        {
+            errorMessage = string.Empty;
+            analysisInProgress = true;
+            analysisComplete = false;
+
+            StateHasChanged();
+
+            await Task.Delay(100);
+
+            var review = new Review
+                {
+                    ReviewText = model.Review
+                };
+
+            var result = AIService.PredictSentiment(review);
+            Sentiment = result.Sentiment;
+            Bigrams = result.BigramFrequencies;
+            analysisComplete = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.ToString()}";
+
+            Console.WriteLine(ex.ToString());
+        }
+
+        finally
+        {
+            analysisInProgress = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetForm()
+    {
+        model = new();
+        Sentiment = string.Empty;
+        Bigrams.Clear();
+        analysisComplete = false;
+        errorMessage = string.Empty;
+    }
+}
