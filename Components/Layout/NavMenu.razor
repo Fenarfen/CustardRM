@@ -1,8 +1,13 @@
-﻿<link href="css/layouts/login.css" rel="stylesheet" />
+﻿@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<link href="css/layouts/NavBar.css" rel="stylesheet" />
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <p class="navbar-brand">CustardRM</p>
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <p class="navbar-brand mb-0">CustardRM</p>
+        </div>
     </div>
 </div>
 
@@ -11,22 +16,65 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            <NavLink class="nav-link" href="inventory" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Inventory
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            <NavLink class="nav-link" href="customers">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Customers
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            <NavLink class="nav-link" href="suppliers">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Suppliers
             </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" disabled>
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Sales Orders (Page not implemented)
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" disabled>
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Purchase Orders (Page not implemented)
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/ai/review-sentiment-testing">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Sentiment Analysis Model Testing
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/ai/profitability-score-testing">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Profitability Score Testing
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/ai/reorder-prediction-testing">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Reorder Quantity and Timing Testing
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 mt-auto">
+            <button class="btn btn-danger w-100" @onclick="Logout">
+                <i class="bi me-2"></i> Logout
+            </button>
         </div>
     </nav>
 </div>
 
+@code {
+    private async Task Logout()
+    {
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "authToken");
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}
