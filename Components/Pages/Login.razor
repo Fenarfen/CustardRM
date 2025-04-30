@@ -1,6 +1,5 @@
 ﻿@page "/"
 
-@layout NoNavMainLayout
 @using CustardRM.Interfaces
 @using CustardRM.Models.Requests
 @using CustardRM.Services
@@ -9,6 +8,8 @@
 @inject NavigationManager Navigation
 @inject HttpClientService HttpService
 @inject IJSRuntime JSRuntime
+
+@layout NoNavMainLayout
 
 <link href="css/pages/login.css" rel="stylesheet" />
 
@@ -33,7 +34,9 @@
         }
     </div>
 
-    <button @onclick="SignIn">Sign In</button>
+    <button @onclick="SignIn" disabled="@isLoggingIn">
+        @(isLoggingIn ? "Attempting to log in..." : "Sign In")
+    </button>
 
     @if (!string.IsNullOrWhiteSpace(ErrorMessage))
     {
@@ -47,6 +50,7 @@
     private string EmailErrorMessage;
     private string PasswordErrorMessage;
     private string ErrorMessage;
+    private bool isLoggingIn = false;
 
     private async Task SignIn()
     {
@@ -73,40 +77,44 @@
             return;
         }
 
-        var (hash, salt) = PasswordHasher.HashPassword(Password);
+        isLoggingIn = true;
+        StateHasChanged();
 
-        LoginRequest request = new LoginRequest()
-        {
-            Email = Email,
-            Password = Password
-        };
+        var request = new LoginRequest
+            {
+                Email = Email,
+                Password = Password
+            };
 
         Console.WriteLine("Sending log in request");
-        var response = await HttpService.SendPost("/api/user/attempt-sign-in", request);
+        var response = await HttpService.SendPost("api/user/attempt-sign-in", request);
         string responseMessage = await response.Content.ReadAsStringAsync();
+
+        isLoggingIn = false;
 
         if (response.IsSuccessStatusCode)
         {
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", responseMessage);
-            StateHasChanged();
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", responseMessage);
             Navigation.NavigateTo("/inventory", true);
         }
         else
         {
             int statusCode = (int)response.StatusCode;
 
-            if (statusCode == 401) // Unauthorised
+            if (statusCode == 401)
             {
                 ErrorMessage = "Username and/or password is incorrect.";
             }
-            else if (statusCode == 500) // Internal Server Error
+            else if (statusCode == 500)
             {
                 ErrorMessage = $"Server Error: {responseMessage}";
             }
-            else // Fallback for other errors
+            else
             {
                 ErrorMessage = $"An unexpected error occurred.\n{responseMessage}";
             }
+
+            StateHasChanged();
         }
     }
 }

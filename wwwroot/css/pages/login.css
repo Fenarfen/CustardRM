@@ -1,6 +1,5 @@
-﻿/* Center the login container */
-body {
-    background-color: #FFFFB7;
+﻿body {
+    background-color: whitesmoke;
 }
 
 .login-container {
@@ -24,6 +23,7 @@ body {
         display: block;
         margin-bottom: 0.25rem;
         font-weight: bold;
+        color: white !important;
     }
 
     .login-container input[type="email"],
