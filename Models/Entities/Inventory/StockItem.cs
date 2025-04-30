@@ -16,6 +16,7 @@ public class StockItem
     public decimal CostPrice { get; set; }
     public int StockLevel { get; set; }
     public bool IsActive { get; set; }
+    public string MetaData { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

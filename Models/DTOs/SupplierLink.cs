@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace CustardRM.Models.DTOs;
 
-public class SupplierLinkDTO
+public class SupplierLink
 {
-    public Supplier Supplier { get; set; }
+    public Entities.Supplier Supplier { get; set; }
     public int StockItemID { get; set; }
     public int SupplierID { get; set; }
     public int LeadTimeDays { get; set; }

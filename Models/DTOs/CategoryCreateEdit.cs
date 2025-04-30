@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace CustardRM.Models.DTOs;
 
-public class SubcategoryDTO
+public class CategoryCreateEdit
 {
-    public int SubcategoryID { get; set; }
+    public int CategoryID { get; set; }
     public string CategoryName { get; set; }
     public string CategoryDescription { get; set; }
 }
