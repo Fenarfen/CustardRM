@@ -1,0 +1,173 @@
+﻿@page "/supplier/view/id={id:int}"
+@using CustardRM.Models.DTOs
+@using CustardRM.Models.Entities;
+@using CustardRM.Models.DTOs.StockItem
+@using CustardRM.Models.DTOs.Supplier
+@using CustardRM.Services
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Text.Json
+@inject NavigationManager Navigation
+@inject HttpClientService HttpService
+@inject IJSRuntime JSRuntime
+
+<link href="css/pages/ViewEditPage.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+@if (!string.IsNullOrEmpty(error))
+{
+	<p style="color:red">@error</p>
+}
+else if (supplierView == null)
+{
+	<p>Loading...</p>
+}
+else
+{
+	<h3>Edit/View Supplier</h3>
+
+	<div>
+		<label>Name:</label>
+		<input type="text" @bind="supplierView.Supplier.Name" disabled="@IsViewMode" />
+
+		<label>Is Active:</label>
+		<input type="checkbox" @bind="supplierView.Supplier.IsActive" disabled="@IsViewMode" />
+
+		<label>Created At:</label>
+		<textarea @bind="supplierView.Supplier.CreatedAt" disabled="@IsViewMode"></textarea>
+	</div>
+
+	@if (mode == "edit")
+	{
+		<button @onclick="SaveChanges">Save</button>
+	}
+
+	<hr />
+
+	<h4>Average Lead Time:</h4>
+	<p>@supplierView.AvgLeadTime</p>
+
+	<h4>Lead Time Variance:</h4>
+	<p>@supplierView.LeadTimeVariance</p>
+
+	<h4>Purchases</h4>
+	@if (supplierView.PurchaseOrders.Count == 0)
+	{
+		<p>No purchase orders found</p>
+	}
+	else
+	{
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>ID</th>
+					<th>Supplier ID</th>
+					<th>Order Date</th>
+					<th>Expected Delivery Date</th>
+					<th>Actual Delivery Date</th>
+					<th>Status</th>
+				</tr>
+			</thead>
+			<tbody>
+				@if (supplierView.PurchaseOrders == null)
+				{
+					<p>Could not load purchase orders</p>
+				}
+				else if (supplierView.PurchaseOrders.Count == 0)
+				{
+					<p>No items found</p>
+				}
+				else
+				{
+					foreach (var item in supplierView.PurchaseOrders)
+					{
+						<tr>
+							<td>@item.ID</td>
+							<td>@item.SupplierID</td>
+							<td>@item.OrderDate</td>
+							<td>@item.ExpectedDeliveryDate</td>
+							<td>@item.ActualDeliveryDate</td>
+							<td>@item.Status</td>
+						</tr>
+					}
+				}
+			</tbody>
+		</table>
+	}
+}
+
+
+@code {
+	[Parameter] public int id { get; set; }
+	private string mode = "edit"; // defaults to edit if not provided
+	private bool IsViewMode => mode == "view";
+	private string error = "";
+	private string token;
+
+	private Models.DTOs.Supplier.SupplierView supplierView;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			token = await JSRuntime.InvokeAsync<string>(
+				"localStorage.getItem",
+				new object[] { "authToken" }
+			);
+
+			if (!string.IsNullOrEmpty(token))
+			{
+				HttpService.Http.DefaultRequestHeaders.Authorization =
+					new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+			}
+
+			var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+			if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("mode", out var modeValue))
+			{
+				mode = modeValue;
+			}
+
+			//Console.WriteLine($"[EditViewSupplier] Page Mode: {mode}");
+
+			Console.WriteLine($"[EditViewSupplier] Retrieving supplier id: {id}");
+
+			var response = await HttpService.SendGet($"api/supplier/get-supplier-view/id={id}");
+
+			if (response.IsSuccessStatusCode)
+			{
+				var json = await response.Content.ReadAsStringAsync();
+
+				supplierView = JsonSerializer.Deserialize<SupplierView>(
+					json,
+					new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+				);
+			}
+			else
+			{
+				Console.WriteLine($"[EditViewSupplier] Request to get-supplier/id={id} failed with status: {response.StatusCode}");
+			}
+
+			StateHasChanged();
+		}
+	}
+
+	private async Task SaveChanges()
+	{
+		if (supplierView == null) return;
+
+		var response = await HttpService.SendPost("/api/supplier/update-supplier", supplierView.Supplier);
+
+		if (response.IsSuccessStatusCode)
+		{
+			Console.WriteLine("[EditViewSupplier] Supplier edited successfully, redirecting to success page.");
+			Navigation.NavigateTo("/supplier/action-success", true);
+		}
+		else
+		{
+			Console.WriteLine($"[EditViewSupplier] Error updating stock item: {response.StatusCode}");
+			var message = await response.Content.ReadAsStringAsync();
+			Console.WriteLine($"[EditViewSupplier] {message}");
+			error = message;
+			StateHasChanged();
+		}
+	}
+}

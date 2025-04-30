@@ -1,0 +1,331 @@
+﻿@page "/suppliers"
+@using CustardRM.Models.Entities;
+@using CustardRM.Services;
+@using System.Net.Http.Headers;
+@using CustardRM.Models.DTOs;
+@inject HttpClientService HttpService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<link href="css/pages/CatalogPage.css" rel="stylesheet" />
+
+<div class="toolbar">
+
+	<input type="text" placeholder="Enter filter text" @bind="keywordFilterText" />
+	<button @onclick="ApplyKeywordFilter">Filter</button>
+
+	<button @onclick="ToggleAdvancedFilter">Advanced Filter</button>
+	<button @onclick="ViewSelectedSupplier" disabled="@(!IsItemSelected)">View</button>
+	<button @onclick="EditSelectedSupplier" disabled="@(!IsItemSelected)">Edit</button>
+</div>
+
+@if (showAdvancedFilter)
+{
+	<div class="advanced-filter-box">
+		<h4>Advanced Filter</h4>
+		<div>
+			<label>
+				<input type="checkbox" @bind="supplierFilter.NameFilter.Enabled" />
+				Enable
+			</label>
+			<label>Supplier Name:</label>
+			<input type="text" @bind="supplierFilter.NameFilter.Value" />
+		</div>
+
+		<div>
+			<label>
+				<input type="checkbox" @bind="supplierFilter.IsActiveFilter.Enabled" />
+				Enable
+			</label>
+			<label>Is Active:</label>
+			<input type="checkbox" @bind="supplierFilter.IsActiveFilter.Value" />
+		</div>
+
+		<div>
+			<label>
+				<input type="checkbox" @bind="supplierFilter.CreatedAtFilter.Enabled" />
+				Enable
+			</label>
+			<label>Created At:</label>
+			<div>
+				<label>Min Value:</label>
+				<input type="datetime" @bind="supplierFilter.CreatedAtFilter.LowerValue" />
+			</div>
+			<div>
+				<label>Max Value:</label>
+				<input type="datetime" @bind="supplierFilter.CreatedAtFilter.UpperValue" />
+			</div>
+		</div>
+
+		@if (!string.IsNullOrEmpty(advancedFilterErrorMessage))
+		{
+			<div><p>@advancedFilterErrorMessage</p></div>
+		}
+		<div>
+			<button @onclick="RemoveAdvancedFilter">Cancel</button>
+			<button @onclick="CancelAdvancedFilter">Cancel</button>
+			<button @onclick="ApplyAdvancedFilter">Filter</button>
+		</div>
+	</div>
+}
+
+<table class="table table-striped" @onclick="CloseContextMenu">
+	<thead>
+		<tr>
+			<th>Name</th>
+			<th>IsActive</th>
+			<th>CreatedAt</th>
+		</tr>
+	</thead>
+	<tbody>
+		@if (displayedItems == null)
+		{
+			<p>Loading...</p>
+		}
+		else if (!displayedItems.Any())
+		{
+			<p>No items found</p>
+		}
+		else
+		{
+			foreach (var item in displayedItems)
+			{
+				<tr @onclick="() => SelectItem(item)"
+					@oncontextmenu="(args) => OnRowRightClick(args, item)"
+					@oncontextmenu:preventDefault="true"
+					@oncontextmenu:stopPropagation="true"
+					class="@(IsSelected(item) ? "selected-row" : "")">
+					<td>@item.Name</td>
+					<td>@item.IsActive</td>
+					<td>@item.CreatedAt</td>
+				</tr>
+			}
+		}
+	</tbody>
+</table>
+
+@if (showContextMenu)
+{
+	<div class="context-menu"
+		 style="left:@contextMenuPositionXpx; top:@contextMenuPositionYpx;"
+		 @onclick="CloseContextMenu">
+		<ul>
+			<li @onclick="ViewSelectedSupplier" class="@(IsItemSelected ? "" : "disabled")">View</li>
+			<li @onclick="EditSelectedSupplier" class="@(IsItemSelected ? "" : "disabled")">Edit</li>
+		</ul>
+	</div>
+}
+
+@code {
+	private List<Supplier> allItems = new();
+	private List<Supplier> displayedItems = new();
+
+	private Supplier? selectedItem;
+
+	private string token;
+
+	// Supplier filter values
+	// Keyword
+	private string keywordFilterText = string.Empty;
+	// Advanced filter
+	private bool showAdvancedFilter = false;
+	private CustardRM.Models.DTOs.Filter.SupplierFilter supplierFilter = new();
+	private string advancedFilterErrorMessage = string.Empty;
+
+	// Context Menu values
+	private bool showContextMenu = false;
+	private int contextMenuPositionX;
+	private int contextMenuPositionY;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			token = await JSRuntime.InvokeAsync<string>(
+				"localStorage.getItem",
+				new object[] { "authToken" }
+			);
+
+			if (!string.IsNullOrEmpty(token))
+			{
+				HttpService.Http.DefaultRequestHeaders.Authorization =
+					new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+			}
+
+			//Console.WriteLine("token: " + token);
+			string url = "/api/supplier/get-suppliers";
+
+			var jsonResponse = await HttpService.SendGet(url);
+
+			if (jsonResponse.IsSuccessStatusCode)
+			{
+				var jsonContent = await jsonResponse.Content.ReadAsStringAsync();
+
+				if (string.IsNullOrEmpty(jsonContent))
+				{
+					allItems = new();
+				}
+				else
+				{
+					allItems = System.Text.Json.JsonSerializer.Deserialize<List<Supplier>>(
+						jsonContent, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+				}
+			}
+			else
+			{
+				Console.WriteLine($"[Suppliers] Unsuccessful response from {url} {jsonResponse.StatusCode}");
+			}
+
+			displayedItems = new List<Supplier>(allItems);
+
+			StateHasChanged();
+		}
+	}
+
+	private void ApplyKeywordFilter()
+	{
+		Console.WriteLine($"Simple Filter: {keywordFilterText}");
+
+		if (string.IsNullOrEmpty(keywordFilterText))
+		{
+			return;
+		}
+
+		displayedItems.Clear();
+
+		foreach (var item in allItems)
+		{
+			if (item.Name.ToLower().Contains(keywordFilterText.ToLower()))
+			{
+				displayedItems.Add(item);
+			}
+		}
+
+		StateHasChanged();
+	}
+
+	private void ToggleAdvancedFilter()
+	{
+		showAdvancedFilter = !showAdvancedFilter;
+	}
+
+	private void RemoveAdvancedFilter()
+	{
+		supplierFilter = new();
+
+		showAdvancedFilter = false;
+		displayedItems = new List<Supplier>(allItems);
+		StateHasChanged();
+	}
+
+	private void CancelAdvancedFilter()
+	{
+		showAdvancedFilter = false;
+
+		StateHasChanged();
+	}
+
+	// Called when the Filter button in the advanced filter panel is clicked
+	private void ApplyAdvancedFilter()
+	{
+		if (supplierFilter.GetEnabledCount() == 0)
+		{
+			advancedFilterErrorMessage = "At least one option must be enabled";
+			return;
+		}
+
+		Console.WriteLine("Advanced Filter applied:");
+		Console.WriteLine($"NameFilter[enabled:{supplierFilter.NameFilter.Enabled}]: {supplierFilter.NameFilter.Value}");
+		Console.WriteLine($"IsActiveFilter[enabled:{supplierFilter.IsActiveFilter.Enabled}]: {supplierFilter.IsActiveFilter.Value}");
+		Console.WriteLine($"CreatedAtFilter[enabled:{supplierFilter.CreatedAtFilter.Enabled}]: min: {supplierFilter.CreatedAtFilter.LowerValue} max: {supplierFilter.CreatedAtFilter.LowerValue}");
+		
+		displayedItems = new();
+
+		var query = allItems.AsEnumerable();
+
+		if (supplierFilter.NameFilter.Enabled &&
+			!string.IsNullOrEmpty(supplierFilter.NameFilter.Value))
+		{
+			query = query.Where(item =>
+				item.Name?.ToLower().Contains(supplierFilter.NameFilter.Value.ToLower()) == true);
+		}
+
+		if (supplierFilter.IsActiveFilter.Enabled)
+		{
+			query = query.Where(item =>
+				item.IsActive == supplierFilter.IsActiveFilter.Value);
+		}
+
+		if (supplierFilter.CreatedAtFilter.Enabled)
+		{
+			if (supplierFilter.CreatedAtFilter.LowerValue != null)
+			{
+				query = query.Where(item => item.CreatedAt >= supplierFilter.CreatedAtFilter.LowerValue);
+			}
+
+			if (supplierFilter.CreatedAtFilter.UpperValue != null)
+			{
+				query = query.Where(item => item.CreatedAt <= supplierFilter.CreatedAtFilter.UpperValue);
+			}
+		}
+
+		displayedItems = query.ToList();
+
+		showAdvancedFilter = false;
+
+		StateHasChanged();
+	}
+
+	private bool IsSelected(Supplier item) => selectedItem != null && selectedItem.ID == item.ID;
+
+	private bool IsItemSelected => selectedItem != null;
+
+	private void SelectItem(Supplier item)
+	{
+		selectedItem = item;
+	}
+
+	private void OnRowRightClick(MouseEventArgs e, Supplier item)
+	{
+		Console.WriteLine($"{item.Name} has been right clicked");
+		selectedItem = item;
+		showContextMenu = true;
+
+		contextMenuPositionX = (int)e.PageX;
+		contextMenuPositionY = (int)e.PageY;
+	}
+
+	private void CloseContextMenu()
+	{
+		showContextMenu = false;
+	}
+
+	private string contextMenuPositionXpx => $"{contextMenuPositionX}px";
+	private string contextMenuPositionYpx => $"{contextMenuPositionY}px";
+
+	private void ViewSelectedSupplier()
+	{
+		if (!IsItemSelected) return;
+
+		var id = selectedItem?.ID;
+		if (id == null) return;
+
+		Console.WriteLine($"View {selectedItem?.Name}");
+
+		// Navigate to the edit/view page with ID and mode
+		Navigation.NavigateTo($"/supplier/view/id={id}?mode=view", true);
+	}
+
+	private void EditSelectedSupplier()
+	{
+		if (!IsItemSelected) return;
+
+		var id = selectedItem?.ID;
+		if (id == null) return;
+
+		Console.WriteLine($"Edit {selectedItem?.Name}");
+
+		// Navigate to the edit/view page with ID and mode
+		Navigation.NavigateTo($"/supplier/view/id={id}", true);
+	}
+}
