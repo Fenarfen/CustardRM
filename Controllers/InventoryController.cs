@@ -5,6 +5,11 @@ using CustardRM.Models.DTOs;
 using CustardRM.Models.Entities.Inventory;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using CustardRM.Services.AI;
+using static CustardRM.Services.AI.SentimentAnalysisService;
+using CustardRM.DataServices;
+using CustardRM.Services;
+using CustardRM.Models.DTOs.StockItem;
 
 namespace CustardRM.Controllers;
 
@@ -39,7 +44,7 @@ public class InventoryController : Controller
             }
             else
             {
-                return StatusCode(500, new { message = "[InventoryController] An error occurred while processing your request. Please try again later.\n" });
+                return StatusCode(500, new { message = $"[InventoryController] An error occurred while processing your request. Please try again later.\n{result.Message}" });
             }
         }
         catch (Exception ex)
@@ -48,12 +53,12 @@ public class InventoryController : Controller
         }
     }
 
-    [HttpGet("get-stock-item/{stockItemID}")]
+    [HttpGet("get-stock-item/id={stockItemID}")]
     public IActionResult GetStockItemData(int stockItemID)
     {
         try
         {
-            var result = _databaseService.GetStockItemDataByID(stockItemID);
+            var result = _databaseService.GetStockItemViewByID(stockItemID);
 
             Console.WriteLine(result.Message);
 
@@ -63,17 +68,17 @@ public class InventoryController : Controller
             }
             else
             {
-                return StatusCode(500, new { message = "[InventoryController] An error occurred while processing your request. Please try again later.\n" });
+                return StatusCode(500, new { message = $"[InventoryController] An error occurred while processing your request. Please try again later.\n{result.Message}" });
             }
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "[InventoryController] An error occurred while processing your request. Please try again later.\n" + ex.ToString() });
-        }
-    }
+			return StatusCode(500, new { message = "[InventoryController] An error occurred while processing your request. Please try again later.\n" + ex.ToString() });
+		}
+	}
 
     [HttpPost("create-stock-item")]
-    public IActionResult CreateStockItem([FromBody] StockItemDTO stockItem)
+    public IActionResult CreateStockItem([FromBody] StockItemCreate stockItem)
     {
         try
         {
@@ -87,7 +92,7 @@ public class InventoryController : Controller
             }
             else
             {
-                return StatusCode(500, new { message = "[InventoryController] An error occurred while processing your request. Please try again later.\n" });
+                return StatusCode(500, new { message = $"[InventoryController] An error occurred while processing your request. Please try again later.\n{result.Message}" });
             }
         }
         catch (Exception ex)
@@ -96,74 +101,82 @@ public class InventoryController : Controller
         }
     }
 
-    [HttpPost("create-category")]
-    public IActionResult CreateCategory([FromBody] CategoryDTO category)
+	[HttpPost("update-stock-item")]
+	public IActionResult UpdateStockItem([FromBody] StockItem stockItem)
+	{
+		try
+		{
+			var result = _databaseService.UpdateStockItem(stockItem);
+
+			Console.WriteLine(result.Message);
+
+			if (result.Success)
+			{
+				return Ok();
+			}
+			else
+			{
+                return StatusCode(500, new { message = $"[InventoryController] An error occurred while processing your request. Please try again later.\n{result.Message}" });
+            }
+        }
+		catch (Exception ex)
+		{
+			return StatusCode(500, new { message = "[InventoryController] An error occurred while processing your request. Please try again later.\n" + ex.ToString() });
+		}
+	}
+
+	[HttpGet("analyse-all-reviews")]
+	public IActionResult AnalyseAllReviews()
+    {
+		try
+		{
+			Task.Run(() =>
+			{
+				try
+				{
+                    _databaseService.ExecuteSentimentAnalysisOnAllReviews();
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine($"[AnalyseAllReviews Task error] {e}");
+				}
+			});
+
+			return Ok();
+		}
+		catch (Exception ex)
+		{
+			return StatusCode(500, new { message = "An error occurred while processing your request. Please try again later.\n" + ex.ToString() });
+		}
+	}
+
+	[HttpPost("create-stock-item-review")]
+	public IActionResult CreateStockItemReview([FromBody] StockItemReviewCreateEdit stockItemReview)
     {
         try
         {
-            var result = _databaseService.CreateCategory(category);
+            if(stockItemReview == null)
+            {
+                return BadRequest("Expected StockItemReviewCreateEdit in body of request");
+            }
 
-            return Ok();
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "An error occurred while processing your request. Please try again later.\n" + ex.ToString() });
-        }
-    }
+            var result = _databaseService.CreateReview(stockItemReview);
 
-    [HttpPost("edit-category")]
-    public IActionResult EditCategory([FromBody] CategoryDTO category)
-    {
-        try
-        {
-            var result = _databaseService.EditCategory(category);
+			Task.Run(() =>
+			{
+				try
+				{
+					ReviewAnalysisResult reviewAnalysisResult = AnalyseReviewText(stockItemReview.ReviewText);
+					_databaseService.StoreReviewAnalysisResult((int)result.Result, stockItemReview.StockItemID, reviewAnalysisResult);
+				}
+				catch (Exception e)
+				{
+					// Optional: log the error, avoid crashing background thread silently
+					Console.WriteLine($"[Background Task Error] {e}");
+				}
+			});
 
-            return Ok();
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "An error occurred while processing your request. Please try again later.\n" + ex.ToString() });
-        }
-    }
-
-    [HttpPost("link-stock-item-to-category/{stockItemID}-{categoryID}")]
-    public IActionResult LinkStockItemToCategory(int stockItemID, int categoryID)
-    {
-        try
-        {
-            var result = _databaseService.CreateStockItemCategoryLink(stockItemID, categoryID);
-
-            return Ok();
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "An error occurred while processing your request. Please try again later.\n" + ex.ToString() });
-        }
-    }
-
-    [HttpGet("get-category/{id}")]
-    public IActionResult GetCategoryByID(int id)
-    {
-        try
-        {
-            var result = _databaseService.GetCategoryByID(id);
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "An error occurred while processing your request. Please try again later.\n" + ex.ToString() });
-        }
-    }
-
-    [HttpPost("link-stock-item-to-supplier/{stockItemID}-{supplierID}")]
-    public IActionResult LinkStockItemToSupplier([FromBody] SupplierLinkDTO sLinkDTO)
-    {
-        try
-        {
-            var result = _databaseService.CreateStockItemSupplierLink(sLinkDTO);
-
-            return Ok();
+			return Ok();
         }
         catch (Exception ex)
         {
