@@ -1,0 +1,339 @@
+﻿@page "/customers"
+@using CustardRM.Models.Entities;
+@using CustardRM.Services;
+@using System.Net.Http.Headers;
+@using CustardRM.Models.DTOs;
+@inject HttpClientService HttpService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<link href="css/pages/CatalogPage.css" rel="stylesheet" />
+
+<div class="toolbar">
+
+	<input type="text" placeholder="Enter filter text" @bind="keywordFilterText" />
+	<button @onclick="ApplyKeywordFilter">Filter</button>
+
+	<button @onclick="ToggleAdvancedFilter">Advanced Filter</button>
+	<button @onclick="ViewSelectedCustomer" disabled="@(!IsItemSelected)">View</button>
+</div>
+
+@if (showAdvancedFilter)
+{
+	<div class="advanced-filter-box">
+		<h4>Advanced Filter</h4>
+
+		<div class="filter-section">
+			<label>
+				<input type="checkbox" @bind="customerFilter.UserIDFilter.Enabled" />
+				User ID
+			</label>
+			<input type="text" @bind="customerFilter.UserIDFilter.Value" disabled="@(!customerFilter.UserIDFilter.Enabled)" />
+		</div>
+
+		<div class="filter-section">
+			<label>
+				<input type="checkbox" @bind="customerFilter.ProfileNameFilter.Enabled" />
+				Profile Name
+			</label>
+			<input type="text" @bind="customerFilter.ProfileNameFilter.Value" disabled="@(!customerFilter.ProfileNameFilter.Enabled)" />
+		</div>
+
+		<div class="filter-section">
+			<label>
+				<input type="checkbox" @bind="customerFilter.EmailFilter.Enabled" />
+				Email
+			</label>
+			<input type="text" @bind="customerFilter.EmailFilter.Value" disabled="@(!customerFilter.EmailFilter.Enabled)" />
+		</div>
+
+		<div class="filter-section">
+			<label>
+				<input type="checkbox" @bind="customerFilter.CreatedAtFilter.Enabled" />
+				Created At
+			</label>
+
+			<div class="range-inputs">
+				<div>
+					<label>Min Value:</label>
+					<input type="datetime-local" @bind="customerFilter.CreatedAtFilter.LowerValue" disabled="@(!customerFilter.CreatedAtFilter.Enabled)" />
+				</div>
+				<div>
+					<label>Max Value:</label>
+					<input type="datetime-local" @bind="customerFilter.CreatedAtFilter.UpperValue" disabled="@(!customerFilter.CreatedAtFilter.Enabled)" />
+				</div>
+			</div>
+		</div>
+
+		@if (!string.IsNullOrEmpty(advancedFilterErrorMessage))
+		{
+			<div class="error-message">@advancedFilterErrorMessage</div>
+		}
+
+		<div class="filter-buttons">
+			<button @onclick="RemoveAdvancedFilter">Reset</button>
+			<button @onclick="CancelAdvancedFilter">Cancel</button>
+			<button @onclick="ApplyAdvancedFilter">Apply</button>
+		</div>
+	</div>
+}
+
+
+<table class="table table-striped" @onclick="CloseContextMenu">
+	<thead>
+		<tr>
+			<th>UserID</th>
+			<th>Profile Name</th>
+			<th>Email</th>
+			<th>CreatedAt</th>
+		</tr>
+	</thead>
+	<tbody>
+		@if (displayedItems == null)
+		{
+			<p>Loading...</p>
+		}
+		else if (!displayedItems.Any())
+		{
+			<p>No items found</p>
+		}
+		else
+		{
+			foreach (var item in displayedItems)
+			{
+				<tr @onclick="() => SelectItem(item)"
+					@oncontextmenu="(args) => OnRowRightClick(args, item)"
+					@oncontextmenu:preventDefault="true"
+					@oncontextmenu:stopPropagation="true"
+					class="@(IsSelected(item) ? "selected-row" : "")">
+					<td>@item.UserID</td>
+					<td>@item.ProfileName</td>
+					<td>@item.Email</td>
+					<td>@item.CreatedAt</td>
+				</tr>
+			}
+		}
+	</tbody>
+</table>
+
+@if (showContextMenu)
+{
+	<div class="context-menu"
+		 style="left:@contextMenuPositionXpx; top:@contextMenuPositionYpx;"
+		 @onclick="CloseContextMenu">
+		<ul>
+			<li @onclick="ViewSelectedCustomer" class="@(IsItemSelected ? "" : "disabled")">View</li>
+		</ul>
+	</div>
+}
+
+@code {
+	private List<Customer> allItems = new();
+	private List<Customer> displayedItems = new();
+
+	private Customer? selectedItem;
+
+	private string token;
+
+	// Customer filter values
+	// Keyword
+	private string keywordFilterText = string.Empty;
+	// Advanced filter
+	private bool showAdvancedFilter = false;
+	private CustardRM.Models.DTOs.Filter.CustomerFilter customerFilter = new();
+	private string advancedFilterErrorMessage = string.Empty;
+
+	// Context Menu values
+	private bool showContextMenu = false;
+	private int contextMenuPositionX;
+	private int contextMenuPositionY;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			token = await JSRuntime.InvokeAsync<string>(
+				"localStorage.getItem",
+				new object[] { "authToken" }
+			);
+
+			if (!string.IsNullOrEmpty(token))
+			{
+				HttpService.Http.DefaultRequestHeaders.Authorization =
+					new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+			}
+
+			//Console.WriteLine("token: " + token);
+			string targetEndpoint = "/api/customer/get-customers";
+
+			var jsonResponse = await HttpService.SendGet(targetEndpoint);
+
+			if (jsonResponse.IsSuccessStatusCode)
+			{
+				var jsonContent = await jsonResponse.Content.ReadAsStringAsync();
+
+				if (string.IsNullOrEmpty(jsonContent))
+				{
+					allItems = new();
+				}
+				else
+				{
+					allItems = System.Text.Json.JsonSerializer.Deserialize<List<Customer>>(
+						jsonContent, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+				}
+			}
+			else
+			{
+				Console.WriteLine($"[Customers] Unsuccessful response from {targetEndpoint} {jsonResponse.StatusCode}");
+			}
+
+			displayedItems = new List<Customer>(allItems);
+
+			StateHasChanged();
+		}
+	}
+
+	private void ApplyKeywordFilter()
+	{
+		Console.WriteLine($"Simple Filter: {keywordFilterText}");
+
+		if (string.IsNullOrEmpty(keywordFilterText))
+		{
+			return;
+		}
+
+		displayedItems.Clear();
+
+		foreach (var item in allItems)
+		{
+			if (item.UserID.ToLower().Contains(keywordFilterText.ToLower()) ||
+				item.ProfileName.ToLower().Contains(keywordFilterText.ToLower()))
+			{
+				displayedItems.Add(item);
+			}
+		}
+
+		StateHasChanged();
+	}
+
+	private void ToggleAdvancedFilter()
+	{
+		showAdvancedFilter = !showAdvancedFilter;
+	}
+
+	private void RemoveAdvancedFilter()
+	{
+		customerFilter = new();
+
+		showAdvancedFilter = false;
+		displayedItems = new List<Customer>(allItems);
+		StateHasChanged();
+	}
+
+	private void CancelAdvancedFilter()
+	{
+		showAdvancedFilter = false;
+
+		StateHasChanged();
+	}
+
+	// Called when the Filter button in the advanced filter panel is clicked
+	private void ApplyAdvancedFilter()
+	{
+		if (customerFilter.GetEnabledCount() == 0)
+		{
+			advancedFilterErrorMessage = "At least one option must be enabled";
+			return;
+		}
+
+		Console.WriteLine("Advanced Filter applied:");
+		Console.WriteLine($"ItemCodeFilter[enabled:{customerFilter.UserIDFilter.Enabled}]: {customerFilter.UserIDFilter.Value}");
+		Console.WriteLine($"ItemNameFilter[enabled:{customerFilter.ProfileNameFilter.Enabled}]: {customerFilter.ProfileNameFilter.Value}");
+		Console.WriteLine($"ItemNameFilter[enabled:{customerFilter.EmailFilter.Enabled}]: {customerFilter.EmailFilter.Value}");
+		Console.WriteLine($"CreatedAtFilter[enabled:{customerFilter.CreatedAtFilter.Enabled}]: min: {customerFilter.CreatedAtFilter.LowerValue} max: {customerFilter.CreatedAtFilter.LowerValue}");
+		
+		displayedItems = new();
+
+		var query = allItems.AsEnumerable();
+
+		if (customerFilter.UserIDFilter.Enabled &&
+			!string.IsNullOrEmpty(customerFilter.UserIDFilter.Value))
+		{
+			query = query.Where(item =>
+				item.UserID?.ToLower().Contains(customerFilter.UserIDFilter.Value.ToLower()) == true);
+		}
+
+		if (customerFilter.ProfileNameFilter.Enabled &&
+			!string.IsNullOrEmpty(customerFilter.ProfileNameFilter.Value))
+		{
+			query = query.Where(item =>
+				item.ProfileName?.ToLower().Contains(customerFilter.ProfileNameFilter.Value.ToLower()) == true);
+		}
+
+		if (customerFilter.EmailFilter.Enabled &&
+			!string.IsNullOrEmpty(customerFilter.EmailFilter.Value))
+		{
+			query = query.Where(item =>
+				item.Email?.ToLower().Contains(customerFilter.EmailFilter.Value.ToLower()) == true);
+		}
+
+		if (customerFilter.CreatedAtFilter.Enabled)
+		{
+			if (customerFilter.CreatedAtFilter.LowerValue != null)
+			{
+				query = query.Where(item => item.CreatedAt >= customerFilter.CreatedAtFilter.LowerValue);
+			}
+
+			if (customerFilter.CreatedAtFilter.UpperValue != null)
+			{
+				query = query.Where(item => item.CreatedAt <= customerFilter.CreatedAtFilter.UpperValue);
+			}
+		}
+
+		displayedItems = query.ToList();
+
+		showAdvancedFilter = false;
+
+		StateHasChanged();
+	}
+
+	private bool IsSelected(Customer item) => selectedItem != null && selectedItem.ID == item.ID;
+
+	private bool IsItemSelected => selectedItem != null;
+
+	private void SelectItem(Customer item)
+	{
+		selectedItem = item;
+	}
+
+	private void OnRowRightClick(MouseEventArgs e, Customer item)
+	{
+		Console.WriteLine($"{item.UserID} has been right clicked");
+		selectedItem = item;
+		showContextMenu = true;
+
+		contextMenuPositionX = (int)e.PageX;
+		contextMenuPositionY = (int)e.PageY;
+	}
+
+	private void CloseContextMenu()
+	{
+		showContextMenu = false;
+	}
+
+	private string contextMenuPositionXpx => $"{contextMenuPositionX}px";
+	private string contextMenuPositionYpx => $"{contextMenuPositionY}px";
+
+	private void ViewSelectedCustomer()
+	{
+		if (!IsItemSelected) return;
+
+		var id = selectedItem?.ID;
+		if (id == null) return;
+
+		Console.WriteLine($"View item {selectedItem?.UserID}");
+
+		// Navigate to the edit/view page with ID and mode
+		Navigation.NavigateTo($"/customer/view/id={id}", true);
+	}
+}
