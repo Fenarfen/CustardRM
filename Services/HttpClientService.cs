@@ -32,8 +32,8 @@ public class HttpClientService : IHttpClientService
 
         Console.WriteLine($"Sending GET request to {_httpClient.BaseAddress}{url}");
         var result = await _httpClient.GetAsync(url);
-        Console.WriteLine($"Response status code: {result.StatusCode.ToString()}");
-        Console.WriteLine($"Response message: {await result.Content.ReadAsStringAsync()}");
+        //Console.WriteLine($"Response status code: {result.StatusCode.ToString()}");
+        //Console.WriteLine($"Response message: {await result.Content.ReadAsStringAsync()}");
         return result;
     }
 
@@ -42,15 +42,15 @@ public class HttpClientService : IHttpClientService
         if (!string.IsNullOrEmpty(token))
         {
             _httpClient.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer");
         }
 
         Console.WriteLine($"Sending POST request to {_httpClient.BaseAddress}{url}");
         string json = JsonSerializer.Serialize(data);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
         var result = await _httpClient.PostAsync(url, content);
-        Console.WriteLine($"Response status code: {result.StatusCode.ToString()}");
-        Console.WriteLine($"Response message: {await result.Content.ReadAsStringAsync()}");
+        //Console.WriteLine($"Response status code: {result.StatusCode.ToString()}");
+        //Console.WriteLine($"Response message: {await result.Content.ReadAsStringAsync()}");
         return result;
     }
 
