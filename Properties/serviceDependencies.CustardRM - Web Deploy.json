@@ -1,11 +1,15 @@
 {
   "dependencies": {
+    "apis1": {
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.ApiManagement/service/CustardRMapi/apis/CustardRM",
+      "type": "apis.azure"
+    },
     "mssql1": {
-      "serviceConnectorResourceId": "/subscriptions/[parameters('subscriptionId')]/resourcegroups/[parameters('resourceGroupName')]/providers/Microsoft.Web/sites/CustardRM/providers/Microsoft.ServiceLinker/linkers/ConnectionStringsCustardRMDBConn_401D261831",
+      "serviceConnectorResourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Web/sites/CustardRM/providers/Microsoft.ServiceLinker/linkers/ConnString_C2FB24358F",
       "secretStore": "AzureAppSettings",
       "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourcegroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/custardrmdbserver/databases/CustardRM_db",
       "type": "mssql.azure",
-      "connectionId": "ConnectionStrings:CustardRMDBConn"
+      "connectionId": "ConnString"
     }
   }
 }
