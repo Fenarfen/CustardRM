@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Http;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using CustardRM.Components;
+using CustardRM.DataServices;
+using static CustardRM.DataServices.SimulationService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +32,7 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ICookieService, CookieService>();
 builder.Services.AddScoped<IHttpClientService, HttpClientService>();
+builder.Services.AddScoped<IAIService, AIService>();
 
 builder.Services.AddRateLimiter(options =>
 {
