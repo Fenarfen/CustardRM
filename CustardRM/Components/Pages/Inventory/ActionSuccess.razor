@@ -1,0 +1,21 @@
+﻿@page "/inventory/action-success"
+@using CustardRM.Models.Entities;
+@using CustardRM.Services;
+@using System.Net.Http.Headers;
+@using CustardRM.Models.DTOs;
+@inject HttpClientService HttpService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<link href="css/pages/CatalogPage.css" rel="stylesheet" />
+
+<p>Action successful</p>
+
+<button @onclick=RedirectToInventory>Back to inventory catalog</button>
+
+@code {
+	private void RedirectToInventory()
+	{
+		Navigation.NavigateTo("/inventory", true);
+	}
+}

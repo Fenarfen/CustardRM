@@ -1,0 +1,124 @@
+﻿@page "/"
+
+@using CustardRM.Interfaces
+@using CustardRM.Models.Requests
+@using CustardRM.Services
+@inject IPasswordHasher PasswordHasher
+@inject ICookieService CookieService
+@inject NavigationManager Navigation
+@inject HttpClientService HttpService
+@inject IJSRuntime JSRuntime
+
+@layout NoNavMainLayout
+
+<link href="css/pages/login.css" rel="stylesheet" />
+
+<div class="login-container">
+    <h3>Sign In</h3>
+
+    <div>
+        <label>Email:</label>
+        <input type="email" @bind="Email" />
+        @if (!string.IsNullOrWhiteSpace(EmailErrorMessage))
+        {
+            <div style="color:red">@EmailErrorMessage</div>
+        }
+    </div>
+
+    <div>
+        <label>Password:</label>
+        <input type="password" @bind="Password" />
+        @if (!string.IsNullOrWhiteSpace(PasswordErrorMessage))
+        {
+            <div style="color:red">@PasswordErrorMessage</div>
+        }
+    </div>
+
+    <button @onclick="SignIn" disabled="@isLoggingIn">
+        @(isLoggingIn ? "Attempting to log in..." : "Sign In")
+    </button>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div style="color:red">@ErrorMessage</div>
+    }
+</div>
+
+@code {
+    private string Email;
+    private string Password;
+    private string EmailErrorMessage;
+    private string PasswordErrorMessage;
+    private string ErrorMessage;
+    private bool isLoggingIn = false;
+
+    private async Task SignIn()
+    {
+        if (string.IsNullOrEmpty(Email))
+        {
+            EmailErrorMessage = "Required";
+        }
+        else
+        {
+            EmailErrorMessage = string.Empty;
+        }
+
+        if (string.IsNullOrEmpty(Password))
+        {
+            PasswordErrorMessage = "Required";
+        }
+        else
+        {
+            PasswordErrorMessage = string.Empty;
+        }
+
+        if (!string.IsNullOrEmpty(PasswordErrorMessage) || !string.IsNullOrEmpty(EmailErrorMessage))
+        {
+            return;
+        }
+
+        isLoggingIn = true;
+        StateHasChanged();
+
+        var request = new LoginRequest
+            {
+                Email = Email,
+                Password = Password
+            };
+
+        Console.WriteLine("Sending log in request");
+        var response = await HttpService.SendPost("api/user/attempt-sign-in", request);
+        string responseMessage = await response.Content.ReadAsStringAsync();
+
+        isLoggingIn = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", responseMessage);
+            Navigation.NavigateTo("/inventory", true);
+        }
+        else
+        {
+            int statusCode = (int)response.StatusCode;
+
+            if (statusCode == 401)
+            {
+                ErrorMessage = "Username and/or password is incorrect.";
+            }
+            else if (statusCode == 429)
+            {
+                ErrorMessage = "Rate limit exceeded, try again later.";
+            }
+            else if (statusCode == 500)
+            {
+                ErrorMessage = $"Server Error: {responseMessage}";
+            }
+            else
+            {
+                ErrorMessage = $"An unexpected error occurred.\n{responseMessage}";
+            }
+
+            StateHasChanged();
+        }
+    }
+}

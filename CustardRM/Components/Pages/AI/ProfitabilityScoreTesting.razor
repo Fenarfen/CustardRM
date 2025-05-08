@@ -1,0 +1,77 @@
+﻿@page "/ai/profitability-score-testing"
+@using CustardRM.Interfaces
+@using CustardRM.Models.DTOs
+@using CustardRM.Models.DTOs.AI
+@inject IAIService AIService
+
+<link href="css/pages/AiFeatureTestPage.css" rel="stylesheet" />
+
+<h3>Test Profitability Score</h3>
+
+<p>NOTE: This page is intended to test the effectivness of the profitability score model and would not be exposed to consumers</p>
+
+@if (!string.IsNullOrEmpty(resultMessage))
+{
+    <div class="result-box">
+        <p><strong>Predicted Profitability Score:</strong> @resultMessage</p>
+    </div>
+    <button class="btn btn-secondary ms-2" @onclick="ResetForm">Reset</button>
+}
+else
+{
+    <EditForm Model="@inputModel" OnValidSubmit="@PredictScore">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label>Profit Margin - the percentage of the unit price which is profit, (UnitPrice - CostPrice) / UnitPrice</label>
+            <InputNumber class="form-control" @bind-Value="inputModel.ProfitMargin" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Sales Velocity</label>
+            <InputNumber class="form-control" @bind-Value="inputModel.SalesVelocity" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Average Review Rating - the average rating out of 5 of all reviews for this item</label>
+            <InputNumber class="form-control" @bind-Value="inputModel.AvgReviewRating" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Discount Rate - the average discount applied to sales of this item</label>
+            <InputNumber class="form-control" @bind-Value="inputModel.DiscountRate" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Stock Turnover Rate - how many times a stock item is sold and replaced within a period of time</label>
+            <InputNumber class="form-control" @bind-Value="inputModel.StockTurnoverRate" step="0.01" />
+        </div>
+
+        <div class="form-group">
+            <label>Holding Cost Estimate - the average cost of storing one unit of the stock item from delivery to sale, this system does not have the data to calculate a holding cost, and so a simplified proxy is used in place, this value is determined by the following formula - StockLevel * CostPrice * 0.01, so 1% of the total inventory cost of the item</label>
+            <InputNumber class="form-control" @bind-Value="inputModel.HoldingCostEstimate" step="0.01" />
+        </div>
+
+        <button class="btn btn-primary" type="submit">Predict Score</button>
+        <button class="btn btn-secondary ms-2" @onclick="ResetForm">Reset</button>
+    </EditForm>
+}
+
+@code {
+    private ProfitabilityScoreMetrics inputModel = new();
+    private string? resultMessage;
+
+    private void ResetForm()
+    {
+        inputModel = new();
+        resultMessage = null;
+    }
+
+    private void PredictScore()
+    {
+        var input = inputModel.ConvertToModelInput();
+        var prediction = CustardRM.ProfitabilityScoreModel.Predict(input);
+        resultMessage = $"{Math.Round(prediction.Score, 2)}";
+    }
+}

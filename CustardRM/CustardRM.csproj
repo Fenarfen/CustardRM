@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Remove="wwwroot\css\pages\AiFeatureTestPage.css" />
+    <Content Remove="wwwroot\css\pages\vieweditpage.css" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="wwwroot\css\pages\AiFeatureTestPage.css" />
+    <None Include="wwwroot\css\pages\ViewEditPage.css" />
+    <None Include="wwwroot\css\pages\CatalogPage.css" />
+    <None Include="wwwroot\css\pages\login.css" />
+    <None Include="wwwroot\css\layouts\MainLayout.css" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="DotNet.Testcontainers" Version="1.6.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.6">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.ML" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML.FastTree" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.21.1" />
+    <PackageReference Include="Plotly.NET" Version="3.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
+    <PackageReference Include="TorchSharp" Version="0.101.5" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.101.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="AI\Models\ProfitabilityScoreModel.mlnet">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="AI\Models\ReviewSentimentAnalysisModel.mlnet">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="AI\Models\SuggestedReorderQuantityModel.mlnet">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="AI\Models\SuggestedReorderTimingModel.mlnet">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

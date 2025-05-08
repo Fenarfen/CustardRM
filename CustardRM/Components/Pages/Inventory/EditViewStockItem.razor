@@ -1,0 +1,311 @@
+﻿@page "/inventory/edit-view-stock-item/id={id:int}"
+@using CustardRM.Models.DTOs
+@using CustardRM.Models.DTOs.StockItem
+@using CustardRM.Services
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Text.Json
+@inject NavigationManager Navigation
+@inject HttpClientService HttpService
+@inject IJSRuntime JSRuntime
+
+<link href="css/pages/ViewEditPage.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+@if (!string.IsNullOrEmpty(error))
+{
+	<p style="color:red">@error</p>
+}
+else if (stockItemView == null)
+{
+	<p>Loading...</p>
+}
+else if (stockItemView.StockItem == null)
+{
+	<p>Error: Stock item data could not be loaded.</p>
+}
+else
+{
+	<h3>View/Edit Stock Item</h3>
+
+	<div>
+		<label>Item Code:</label>
+		<input type="text" @bind="stockItemView.StockItem.ItemCode" disabled="@IsViewMode" />
+
+		<label>Item Name:</label>
+		<input type="text" @bind="stockItemView.StockItem.ItemName" disabled="@IsViewMode" />
+
+		<label>Description:</label>
+		<textarea @bind="stockItemView.StockItem.Description" disabled="@IsViewMode"></textarea>
+
+		<label>Unit Price:</label>
+		<input type="number" step="0.01" @bind="stockItemView.StockItem.UnitPrice" disabled="@IsViewMode" />
+
+		<label>Cost Price:</label>
+		<input type="number" step="0.01" @bind="stockItemView.StockItem.CostPrice" disabled="@IsViewMode" />
+
+		<label>Stock Level:</label>
+		<input type="number" @bind="stockItemView.StockItem.StockLevel" disabled="@IsViewMode" />
+
+		<label>Is Active:</label>
+		<input type="checkbox" @bind="stockItemView.StockItem.IsActive" disabled="@IsViewMode" />
+	</div>
+
+	<h4>Metadata</h4>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Key</th>
+				<th>Value</th>
+				@if (mode == "edit")
+				{
+					<th>Action</th>
+				}
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var pair in editableMetaData.ToList())
+			{
+				<tr>
+					<td>
+						<span>@pair.Key</span>
+					</td>
+					<td>
+						@if (mode == "edit")
+						{
+							<input type="text" @bind="editableMetaData[pair.Key]" />
+						}
+						else
+						{
+							<span>@pair.Value</span>
+						}
+					</td>
+					@if (mode == "edit")
+					{
+						<td><button @onclick="() => RemoveMeta(pair.Key)">Remove</button></td>
+					}
+				</tr>
+			}
+		</tbody>
+	</table>
+
+	@if (mode == "edit")
+	{
+		<div>
+			<h5>Add New Metadata</h5>
+			<input placeholder="Key" @bind="newMetaKey" />
+			<input placeholder="Value" @bind="newMetaValue" />
+			<button @onclick="AddMeta">Add</button>
+		</div>
+
+		<button @onclick="SaveChanges">Save</button>
+	}
+
+	<hr />
+
+	<h4>Predicted Profitability Score</h4>
+	@if (stockItemView.ProfitabilityScorePrediction != null)
+	{
+		<p><strong>Score:</strong> @stockItemView.ProfitabilityScorePrediction.Score</p>
+		<p><strong>Last generated:</strong> @stockItemView.ProfitabilityScorePrediction.GeneratedAt</p>
+		<p><strong>Justification:</strong> @stockItemView.ProfitabilityScorePrediction.Justification</p>
+	}
+	else
+	{
+		<p>No profitability score found.</p>
+	}
+
+	<h4>Average Predicted AI Sentiment:</h4>
+	<p>@(stockItemView.OverallAISentiment ?? "N/A")</p>
+
+	<h4>Top Bigrams</h4>
+	@if (stockItemView.TopBigrams?.Any() == true)
+	{
+		<table class="table table-sm">
+			<thead>
+				<tr>
+					<th>Bigram</th>
+					<th>Frequency</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var bigram in stockItemView.TopBigrams.OrderByDescending(b => b.Value))
+				{
+					<tr>
+						<td>@bigram.Key</td>
+						<td>@bigram.Value</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+	else
+	{
+		<p>No bigrams available.</p>
+	}
+
+	<hr />
+
+	<h4>Reviews</h4>
+	@if (stockItemView.Reviews?.Any() == true)
+	{
+		foreach (var review in stockItemView.Reviews)
+		{
+			<div>
+				<p>
+					<strong>Rating:</strong>
+					@for (int i = 0; i < review.ReviewRating; i++)
+					{
+						<i class="bi bi-star-fill text-warning"></i>
+					}
+					@for (int i = Convert.ToInt16(review.ReviewRating); i < 5; i++)
+					{
+						<i class="bi bi-star text-muted"></i>
+					}
+				</p>
+
+				@{
+					List<string> helpfulnessParts = review.ReviewHelpfulness?.Split('/')?.ToList() ?? new List<string> { "0", "0" };
+					var thumbsUp = helpfulnessParts.Count > 0 ? helpfulnessParts[0] : "0";
+					var thumbsDown = helpfulnessParts.Count > 1 ? helpfulnessParts[1] : "0";
+				}
+
+				<p>
+					<strong>Helpfulness:</strong>
+					<i class="bi bi-hand-thumbs-up-fill text-success me-1"></i> @thumbsUp
+					/
+					<i class="bi bi-hand-thumbs-down-fill text-danger ms-1 me-1"></i> @thumbsDown
+				</p>
+
+				<p><strong>Text:</strong> @review.ReviewText</p>
+				<p><strong>Sentiment:</strong> @review.PredictedAISentiment</p>
+				<p><strong>Created At:</strong> @review.CreatedAt</p>
+				<hr />
+			</div>
+		}
+	}
+	else
+	{
+		<p>No reviews available.</p>
+	}
+}
+
+
+
+@code {
+	[Parameter] public int id { get; set; }
+	private string mode = "edit"; // defaults to edit if not provided
+	private bool IsViewMode => mode == "view";
+	private string error = "";
+	private string token;
+	private Dictionary<string, string> editableMetaData = new();
+	private string newMetaKey = "";
+	private string newMetaValue = "";
+
+	private Models.DTOs.StockItem.StockItemView stockItemView;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			token = await JSRuntime.InvokeAsync<string>(
+				"localStorage.getItem",
+				new object[] { "authToken" }
+			);
+
+			if (!string.IsNullOrEmpty(token))
+			{
+				HttpService.Http.DefaultRequestHeaders.Authorization =
+					new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+			}
+
+			var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+			if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("mode", out var modeValue))
+			{
+				mode = modeValue;
+			}
+
+			Console.WriteLine($"[EditViewStockItem] Page Mode: {mode}");
+
+			Console.WriteLine($"[EditViewStockItem] Retrieving stock item {id}");
+
+			var url = $"api/inventory/get-stock-item/id={id}";
+
+			var response = await HttpService.SendGet(url);
+
+			var json = await response.Content.ReadAsStringAsync();
+
+			Console.WriteLine(json);
+
+			if (response.IsSuccessStatusCode)
+			{
+				stockItemView = JsonSerializer.Deserialize<StockItemView>(
+					json,
+					new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+				);
+
+				if (!string.IsNullOrEmpty(stockItemView.StockItem.MetaData))
+				{
+					try
+					{
+						editableMetaData = JsonSerializer.Deserialize<Dictionary<string, string>>(
+							stockItemView.StockItem.MetaData,
+							new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+						) ?? new();
+					}
+					catch
+					{
+						editableMetaData = new();
+					}
+				}
+			}
+			else
+			{
+				Console.WriteLine($"[EditViewStockItem] Request to {url} failed with status: {response.StatusCode}");
+			}
+
+			StateHasChanged();
+		}
+	}
+
+	private void AddMeta()
+	{
+		if (!string.IsNullOrWhiteSpace(newMetaKey) && !editableMetaData.ContainsKey(newMetaKey))
+		{
+			editableMetaData[newMetaKey] = newMetaValue;
+			newMetaKey = "";
+			newMetaValue = "";
+		}
+	}
+
+	private void RemoveMeta(string key)
+	{
+		if (editableMetaData.ContainsKey(key))
+		{
+			editableMetaData.Remove(key);
+		}
+	}
+
+	private async Task SaveChanges()
+	{
+		if (stockItemView == null) return;
+
+		stockItemView.StockItem.MetaData = JsonSerializer.Serialize(editableMetaData);
+
+		var response = await HttpService.SendPost("/api/inventory/update-stock-item", stockItemView.StockItem);
+
+		if (response.IsSuccessStatusCode)
+		{
+			Console.WriteLine("[EditViewStockItem] Stock item updated successfully, redirecting to success page.");
+			Navigation.NavigateTo("/inventory/action-success", true);
+		}
+		else
+		{
+			Console.WriteLine($"[EditViewStockItem] Error updating stock item: {response.StatusCode}");
+			var message = await response.Content.ReadAsStringAsync();
+			Console.WriteLine($"[EditViewStockItem] {message}");
+			error = message;
+			StateHasChanged();
+		}
+	}
+}

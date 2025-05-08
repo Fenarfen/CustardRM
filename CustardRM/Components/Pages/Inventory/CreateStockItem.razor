@@ -1,0 +1,153 @@
+﻿@page "/inventory/create-stock-item"
+@using CustardRM.Models.DTOs.StockItem
+@using CustardRM.Models.Entities;
+@using CustardRM.Models.Entities.Inventory
+@using CustardRM.Services;
+@using System.Net.Http.Headers;
+@using CustardRM.Models.DTOs;
+@using System.Text.Json
+@inject HttpClientService HttpService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<link href="css/pages/AiFeatureTestPage.css" rel="stylesheet" />
+
+<h3>Create Stock Item</h3>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="error-message">@error</div>
+}
+
+<EditForm Model="@stockItem" OnValidSubmit="SaveChanges">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label>Item Code:</label>
+        <InputText class="form-control" @bind-Value="stockItem.ItemCode" />
+    </div>
+
+    <div class="form-group">
+        <label>Item Name:</label>
+        <InputText class="form-control" @bind-Value="stockItem.ItemName" />
+    </div>
+
+    <div class="form-group">
+        <label>Description:</label>
+        <InputTextArea class="form-control" @bind-Value="stockItem.Description" />
+    </div>
+
+    <div class="form-group">
+        <label>Unit Price:</label>
+        <InputNumber class="form-control" @bind-Value="stockItem.UnitPrice" step="0.01" />
+    </div>
+
+    <div class="form-group">
+        <label>Cost Price:</label>
+        <InputNumber class="form-control" @bind-Value="stockItem.CostPrice" step="0.01" />
+    </div>
+
+    <div class="form-group">
+        <label>Stock Level:</label>
+        <InputNumber class="form-control" @bind-Value="stockItem.StockLevel" />
+    </div>
+
+    <h4>Metadata</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Value</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var pair in editableMetaData.ToList())
+            {
+                <tr>
+                    <td>@pair.Key</td>
+                    <td>
+                        <input type="text" class="form-control" @bind="editableMetaData[pair.Key]" />
+                    </td>
+                    <td><button type="button" class="btn btn-danger" @onclick="() => RemoveMeta(pair.Key)">Remove</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="form-group">
+        <h5>Add New Metadata</h5>
+        <div class="d-flex gap-2">
+            <InputText class="form-control" placeholder="Key" @bind-Value="newMetaKey" />
+            <InputText class="form-control" placeholder="Value" @bind-Value="newMetaValue" />
+            <button type="button" class="btn btn-secondary" @onclick="AddMeta">Add</button>
+        </div>
+    </div>
+
+    <button class="btn btn-primary mt-3" type="submit">Save</button>
+</EditForm>
+
+@code {
+    StockItemCreate stockItem = new();
+    string error;
+    private string token;
+    private Dictionary<string, string> editableMetaData = new();
+    private string newMetaKey = "";
+    private string newMetaValue = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            token = await JSRuntime.InvokeAsync<string>(
+                "localStorage.getItem",
+                new object[] { "authToken" }
+            );
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                HttpService.Http.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+            }
+        }
+    }
+
+    private void AddMeta()
+    {
+        if (!string.IsNullOrWhiteSpace(newMetaKey) && !editableMetaData.ContainsKey(newMetaKey))
+        {
+            editableMetaData[newMetaKey] = newMetaValue;
+            newMetaKey = "";
+            newMetaValue = "";
+        }
+    }
+
+    private void RemoveMeta(string key)
+    {
+        if (editableMetaData.ContainsKey(key))
+        {
+            editableMetaData.Remove(key);
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (stockItem == null) return;
+
+        stockItem.MetaData = JsonSerializer.Serialize(editableMetaData);
+
+        var response = await HttpService.SendPost("/api/inventory/create-stock-item", stockItem);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/inventory/action-success", true);
+        }
+        else
+        {
+            var message = await response.Content.ReadAsStringAsync();
+            error = message;
+            StateHasChanged();
+        }
+    }
+}

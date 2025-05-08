@@ -1,0 +1,298 @@
+﻿{
+  "Scenario": "Regression",
+  "DataSource": {
+    "Version": 3,
+    "EscapeCharacter": "\"",
+    "ReadMultiLines": false,
+    "KeepDiacritics": false,
+    "KeepPunctuations": false,
+    "AllowQuoting": false,
+    "Type": "TabularFile",
+    "FilePath": "C:\\Users\\lewis\\source\\repos\\CustardRM\\AI\\TrainingData\\ProfitabilityScoreTrainingData.csv",
+    "Delimiter": ",",
+    "DecimalMarker": ".",
+    "HasHeader": true,
+    "ColumnProperties": [
+      {
+        "ColumnName": "ProfitMargin",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "SalesVelocity",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "AvgReviewRating",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "DiscountRate",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "StockTurnoverRate",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "HoldingCostEstimate",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "ProfitabilityScore",
+        "ColumnPurpose": "Label",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      }
+    ]
+  },
+  "Environment": {
+    "Type": "LocalCPU",
+    "Version": 1
+  },
+  "RunHistory": {
+    "Version": 3,
+    "Type": "Result",
+    "Trials": [
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "FastForestRegression",
+        "Score": 0.88516005316154867,
+        "RuntimeInSeconds": 0.207,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e3",
+          "e0": {
+            "OutputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ],
+            "InputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ]
+          },
+          "e1": {
+            "InputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e3": {
+            "NumberOfTrees": 4,
+            "NumberOfLeaves": 4,
+            "FeatureFraction": 1.0,
+            "LabelColumnName": "ProfitabilityScore",
+            "FeatureColumnName": "Features"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "FastForestRegression",
+        "Score": 0.88516005316154867,
+        "RuntimeInSeconds": 0.029,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e3",
+          "e0": {
+            "OutputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ],
+            "InputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ]
+          },
+          "e1": {
+            "InputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e3": {
+            "NumberOfTrees": 4,
+            "NumberOfLeaves": 4,
+            "FeatureFraction": 1.0,
+            "LabelColumnName": "ProfitabilityScore",
+            "FeatureColumnName": "Features"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "FastForestRegression",
+        "Score": 0.88264274986772673,
+        "RuntimeInSeconds": 0.029,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e3",
+          "e0": {
+            "OutputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ],
+            "InputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ]
+          },
+          "e1": {
+            "InputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e3": {
+            "NumberOfTrees": 4,
+            "NumberOfLeaves": 7,
+            "FeatureFraction": 0.93016857,
+            "LabelColumnName": "ProfitabilityScore",
+            "FeatureColumnName": "Features"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "FastTreeRegression",
+        "Score": 0.3703165164957174,
+        "RuntimeInSeconds": 0.049,
+        "Parameter": {
+          "_SCHEMA_": "e0 * e1 * e2",
+          "e0": {
+            "OutputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ],
+            "InputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ]
+          },
+          "e1": {
+            "InputColumnNames": [
+              "ProfitMargin",
+              "SalesVelocity",
+              "AvgReviewRating",
+              "DiscountRate",
+              "StockTurnoverRate",
+              "HoldingCostEstimate"
+            ],
+            "OutputColumnName": "Features"
+          },
+          "e2": {
+            "NumberOfLeaves": 4,
+            "MinimumExampleCountPerLeaf": 20,
+            "NumberOfTrees": 4,
+            "MaximumBinCountPerFeature": 254,
+            "FeatureFraction": 1.0,
+            "LearningRate": 0.099999999999999978,
+            "LabelColumnName": "ProfitabilityScore",
+            "FeatureColumnName": "Features",
+            "DiskTranspose": false
+          }
+        }
+      }
+    ],
+    "Estimators": {
+      "e0": "ReplaceMissingValues",
+      "e1": "Concatenate",
+      "e2": "FastTreeRegression",
+      "e3": "FastForestRegression",
+      "e4": "LightGbmRegression",
+      "e5": "LbfgsPoissonRegressionRegression",
+      "e6": "SdcaRegression"
+    },
+    "Schema": "e0 * e1 * (e2 + e3 + e4 + e5 + e6)",
+    "MetricName": "RSquared",
+    "ModelFilePath": "C:\\Users\\lewis\\source\\repos\\CustardRM\\AI\\Models\\ProfitabilityScoreModel.mlnet"
+  },
+  "Type": "TrainingConfig",
+  "Version": 5,
+  "TrainingOption": {
+    "Version": 2,
+    "Subsampling": false,
+    "Type": "RegressionTrainingOption",
+    "TrainingTime": 10,
+    "LabelColumn": "ProfitabilityScore",
+    "ValidationOption": {
+      "Version": 0,
+      "Type": "TrainValidateSplitValidationOption",
+      "SplitRatio": 0.2
+    }
+  }
+}

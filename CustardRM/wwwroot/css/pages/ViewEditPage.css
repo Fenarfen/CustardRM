@@ -1,0 +1,14 @@
+﻿table tr.selected-row {
+    background-color: #fffa90 !important;
+}
+
+.context-menu {
+    position: absolute;
+    z-index: 9999;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    padding: 0.5rem;
+    min-width: 150px;
+}
