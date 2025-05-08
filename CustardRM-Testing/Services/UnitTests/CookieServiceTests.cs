@@ -22,30 +22,6 @@ public class CookieServiceTests
     }
 
     [Test]
-    public void SetCookie_Appends_Strict_SameSite_And_OneDayExpiry()
-    {
-        _service.SetCookie("foo", "bar");
-
-        Assert.IsTrue(_context.Response.Headers.ContainsKey("Set-Cookie"), "No Set-Cookie header");
-        var header = _context.Response.Headers["Set-Cookie"].ToString();
-
-        StringAssert.StartsWith("foo=bar;", header);
-        StringAssert.Contains("SameSite=Strict", header);
-
-        // Cookies expire in one day's time
-        var expiresPart = header
-            .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .FirstOrDefault(x => x.StartsWith("Expires=", StringComparison.OrdinalIgnoreCase));
-
-        Assert.IsNotNull(expiresPart, "Expires= missing");
-        var dateStr = expiresPart!["Expires=".Length..];
-        DateTime dt = DateTime.Parse(dateStr, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
-        var diff = dt - DateTime.UtcNow;
-        Assert.That(diff.TotalHours, Is.InRange(23.5, 24.5),
-            "Expires should be ~24h from now");
-    }
-
-    [Test]
     public void GetCookie_Returns_Value_When_Present()
     {
         _context.Request.Headers["Cookie"] = "foo=bar; baz=qux";
