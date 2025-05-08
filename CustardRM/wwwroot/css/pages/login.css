@@ -43,8 +43,6 @@
     }
 
     .login-container div[style*="color:red"] {
-        margin-top: -0.5rem;
-        margin-bottom: 1rem;
         font-size: 0.9rem;
         color: #f56c6c !important;
     }
