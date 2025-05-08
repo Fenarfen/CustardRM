@@ -37,25 +37,17 @@ builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IReorderPredictionService, ReorderPredictionService>();
 builder.Services.AddScoped<IProfitabilityScoreService, ProfitabilityScoreService>();
 
-builder.Services.AddRateLimiter(options =>
+builder.Services.AddRateLimiter(rateLimitOptions =>
 {
-    options.AddPolicy("fixed", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: key => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromSeconds(10),
-                QueueLimit = 0,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            }));
-
-    options.OnRejected = async (context, token) =>
-    {
-        context.HttpContext.Response.StatusCode = 429;
-        await context.HttpContext.Response.WriteAsync("Rate limit exceeded.", token);
-    };
+    rateLimitOptions.AddFixedWindowLimiter("fixed", options =>
+     {
+         options.PermitLimit = 2;
+         options.Window = TimeSpan.FromSeconds(1);
+         options.QueueLimit = 0;
+     });
+    rateLimitOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
+    
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -64,8 +56,6 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
 var app = builder.Build();
-
-app.UseRateLimiter();
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -77,6 +67,7 @@ app.MapControllers();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 
 app.UseAntiforgery();
 

@@ -105,6 +105,10 @@
             {
                 ErrorMessage = "Username and/or password is incorrect.";
             }
+            else if (statusCode == 429)
+            {
+                ErrorMessage = "Rate limit exceeded, try again later.";
+            }
             else if (statusCode == 500)
             {
                 ErrorMessage = $"Server Error: {responseMessage}";
